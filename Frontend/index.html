@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Chat Assistant</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>PDF Chat</h2>
+                <button id="newChatBtn" class="btn-primary">+ New Chat</button>
+            </div>
+            
+            <div class="chat-list" id="chatList">
+                <!-- Chat items will be dynamically added here -->
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main-content">
+            <!-- Welcome Screen (shown when no chat is selected) -->
+            <div id="welcomeScreen" class="welcome-screen">
+                <h1>Welcome to PDF Chat Assistant</h1>
+                <p>Upload a PDF and start asking questions about it</p>
+                <button id="startNewChatBtn" class="btn-large">Start New Chat</button>
+            </div>
+
+            <!-- Chat Interface (hidden initially) -->
+            <div id="chatInterface" class="chat-interface" style="display: none;">
+                <!-- Chat Header -->
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <h3 id="currentChatTitle">New Chat</h3>
+                        <button id="renameChatBtn" class="btn-icon" title="Rename">✏️</button>
+                    </div>
+                    <div class="chat-info" id="pdfInfo">
+                        <span id="pdfName">No PDF uploaded</span>
+                    </div>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="messages-container" id="messagesContainer">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Ask a question about your PDF..." 
+                            disabled
+                        >
+                        <button id="sendBtn" class="btn-send" disabled>Send</button>
+                    </div>
+                    <div class="file-input-wrapper">
+                        <input 
+                            type="file" 
+                            id="pdfInput" 
+                            accept=".pdf" 
+                            style="display: none;"
+                        >
+                        <button id="uploadBtn" class="btn-upload">📎 Upload PDF</button>
+                        <span id="uploadStatus" class="upload-status"></span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for renaming chat -->
+    <div id="renameModal" class="modal">
+        <div class="modal-content">
+            <h3>Rename Chat</h3>
+            <input type="text" id="renameInput" placeholder="Enter new name">
+            <div class="modal-actions">
+                <button id="cancelRenameBtn" class="btn-secondary">Cancel</button>
+                <button id="confirmRenameBtn" class="btn-primary">Rename</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="chatManager.js"></script>
+    <script src="uiComponents.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

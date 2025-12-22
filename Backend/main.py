@@ -1,24 +1,20 @@
 # main.py
 
 from extract_text import extract_clean_text_from_pdf
-from create_chunks import chunk_text
+from create_chunks import chunk_text_by_words
 
 
 def main():
 
-    PDF_PATH = "report.pdf"  # specify your PDF path here
-
-    # 1. Extract cleaned text from the PDF
+    PDF_PATH = "monopoly.pdf"  # Replace with your PDF file path
     clean_text = extract_clean_text_from_pdf(PDF_PATH)
 
-    # 2. Chunk the text
-    chunks = chunk_text(
+    chunks = chunk_text_by_words(
         clean_text,
-        chunk_size=1000,   # adjust for your model / use case
-        overlap=200,       # typically 10–20% of chunk_size
+        chunk_size=1000,   # target chars per chunk
+        overlap=200,       # target overlapping chars
     )
 
-    # 3. Example: print basic info and first few chunks
     print(f"Total characters: {len(clean_text)}")
     print(f"Total chunks: {len(chunks)}\n")
 

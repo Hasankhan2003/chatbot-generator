@@ -16,77 +16,95 @@
             </div>
             
             <div class="chat-list" id="chatList">
-                <!-- Chat items will be dynamically added here -->
+                <!-- Chat history will be populated here -->
             </div>
         </aside>
 
         <!-- Main Chat Area -->
-        <main class="main-content">
-            <!-- Welcome Screen (shown when no chat is selected) -->
+        <main class="chat-container">
+            <!-- Welcome Screen -->
             <div id="welcomeScreen" class="welcome-screen">
                 <h1>Welcome to PDF Chat Assistant</h1>
-                <p>Upload a PDF and start asking questions about it</p>
-                <button id="startNewChatBtn" class="btn-large">Start New Chat</button>
+                <p>Upload a PDF document to start chatting with it</p>
+                <button id="welcomeNewChatBtn" class="btn-primary btn-large">Create New Chat</button>
             </div>
 
-            <!-- Chat Interface (hidden initially) -->
-            <div id="chatInterface" class="chat-interface" style="display: none;">
-                <!-- Chat Header -->
+            <!-- Chat Interface -->
+            <div id="chatInterface" class="chat-interface hidden">
                 <div class="chat-header">
                     <div class="chat-title">
-                        <h3 id="currentChatTitle">New Chat</h3>
+                        <h3 id="currentChatTitle">Untitled Chat</h3>
                         <button id="renameChatBtn" class="btn-icon" title="Rename">✏️</button>
                     </div>
-                    <div class="chat-info" id="pdfInfo">
-                        <span id="pdfName">No PDF uploaded</span>
-                    </div>
+                    <button id="deleteChatBtn" class="btn-danger-small" title="Delete Chat">🗑️</button>
                 </div>
 
-                <!-- Messages Area -->
                 <div class="messages-container" id="messagesContainer">
-                    <!-- Messages will be dynamically added here -->
+                    <!-- Messages will appear here -->
                 </div>
 
-                <!-- Input Area -->
                 <div class="input-container">
-                    <div class="input-wrapper">
-                        <input 
-                            type="text" 
-                            id="messageInput" 
-                            placeholder="Ask a question about your PDF..." 
-                            disabled
-                        >
-                        <button id="sendBtn" class="btn-send" disabled>Send</button>
-                    </div>
-                    <div class="file-input-wrapper">
-                        <input 
-                            type="file" 
-                            id="pdfInput" 
-                            accept=".pdf" 
-                            style="display: none;"
-                        >
-                        <button id="uploadBtn" class="btn-upload">📎 Upload PDF</button>
-                        <span id="uploadStatus" class="upload-status"></span>
-                    </div>
+                    <input 
+                        type="text" 
+                        id="messageInput" 
+                        placeholder="Ask a question about your PDF..."
+                        disabled
+                    >
+                    <button id="sendBtn" class="btn-send" disabled>Send</button>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Modal for renaming chat -->
-    <div id="renameModal" class="modal">
+    <!-- Modal for New Chat -->
+    <div id="newChatModal" class="modal hidden">
         <div class="modal-content">
-            <h3>Rename Chat</h3>
-            <input type="text" id="renameInput" placeholder="Enter new name">
-            <div class="modal-actions">
+            <div class="modal-header">
+                <h3>Create New Chat</h3>
+                <button class="modal-close" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="chatName">Chat Name (optional)</label>
+                <input type="text" id="chatName" placeholder="Enter chat name...">
+                
+                <label for="pdfUpload">Upload PDF *</label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <input type="file" id="pdfUpload" accept=".pdf" hidden>
+                    <div class="upload-placeholder">
+                        <span class="upload-icon">📄</span>
+                        <p>Click to upload or drag and drop</p>
+                        <p class="upload-hint">PDF files only</p>
+                    </div>
+                    <div class="file-info hidden" id="fileInfo">
+                        <span id="fileName"></span>
+                        <button class="btn-remove" id="removeFileBtn">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelModalBtn" class="btn-secondary">Cancel</button>
+                <button id="createChatBtn" class="btn-primary" disabled>Create Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Rename -->
+    <div id="renameModal" class="modal hidden">
+        <div class="modal-content modal-small">
+            <div class="modal-header">
+                <h3>Rename Chat</h3>
+                <button class="modal-close" id="closeRenameModalBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="renameInput" placeholder="Enter new name...">
+            </div>
+            <div class="modal-footer">
                 <button id="cancelRenameBtn" class="btn-secondary">Cancel</button>
                 <button id="confirmRenameBtn" class="btn-primary">Rename</button>
             </div>
         </div>
     </div>
 
-    <script src="chatManager.js"></script>
-    <script src="uiComponents.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

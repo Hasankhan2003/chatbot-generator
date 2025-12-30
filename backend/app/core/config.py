@@ -1,10 +1,27 @@
-from pathlib import Path
+from pydantic_settings import BaseSettings
 
-BASE_DIR = Path(__file__).resolve().parent.parent
 
-PERSIST_DIR = str(BASE_DIR.parent / "chromadb_data")
-UPLOAD_DIR = BASE_DIR.parent / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True, parents=True)
+class Settings(BaseSettings):
+    APP_NAME: str
+    ENV: str
 
-DB_PATH = BASE_DIR.parent / "chatbot.db"
-GROQ_MODEL = "llama-3.1-8b-instant"
+    DATABASE_URL: str
+
+    CHROMA_PERSIST_DIR: str
+    CHROMA_COLLECTION: str
+
+    EMBEDDING_MODEL: str
+
+    GROQ_API_KEY: str
+    GROQ_MODEL: str
+
+    UPLOAD_DIR: str
+
+    CHUNK_SIZE: int
+    CHUNK_OVERLAP: int
+
+    class Config:
+        env_file = ".env"
+
+
+settings = Settings()

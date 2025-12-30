@@ -13,3 +13,8 @@ __pycache__/
 .DS_Store
 
 git_commands.txt
+
+data/
+
+uploads/
+

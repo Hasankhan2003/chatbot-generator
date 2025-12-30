@@ -2,9 +2,6 @@ import pdfplumber
 import re
 from pathlib import Path
 
-# <<< CHANGE THIS TO YOUR PDF FILE PATH >>>
-# PDF_PATH = r"report.pdf"  # e.g. r"C:\Users\you\Documents\sample.pdf"
-
 
 def normalize_whitespace(text: str) -> str:
 

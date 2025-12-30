@@ -1,24 +1,28 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .db import init_db
-from .routers import chats, messages
+
+from app.api import chats, documents, messages
+from app.core.database import Base, engine
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Chatbot Generator")
 
-origins = ["http://localhost:5500", "http://127.0.0.1:5500", "http://localhost:8000"]
+# CORS configuration
+origins = [
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    # add more origins if needed
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins,        # or ["*"] to allow all (see note below)
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],          # GET, POST, PUT, DELETE, etc.
+    allow_headers=["*"],          # Authorization, Content-Type, etc.
 )
 
-init_db()
-
 app.include_router(chats.router)
+app.include_router(documents.router)
 app.include_router(messages.router)
-
-@app.get("/health")
-def health():
-    return {"status": "ok"}

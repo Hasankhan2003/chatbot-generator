@@ -1,47 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Chatbot Generator</title>
-  <link rel="stylesheet" href="css/styles.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot Generator</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <h2>Chatbot Generator</h2>
-        <button id="new-chat-btn">+ New Chat</button>
-      </div>
-      <ul id="chat-list" class="chat-list"></ul>
-    </aside>
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
-    <main class="main">
-      <div class="chat-header">
-        <h2 id="chat-title">No chat selected</h2>
-        <div class="chat-actions">
-          <label class="upload-label">
-            Upload PDF
-            <input type="file" id="pdf-input" accept="application/pdf" hidden />
-          </label>
-          <button id="rename-chat-btn">Rename</button>
-          <button id="delete-chat-btn">Delete</button>
-        </div>
-      </div>
+    <!-- Main Layout -->
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat-btn" class="btn btn-primary" title="Create a new chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        <line x1="12" y1="9" x2="12" y2="15"/>
+                        <line x1="9" y1="12" x2="15" y2="12"/>
+                    </svg>
+                    New Chat
+                </button>
+            </div>
+            <div id="chat-list" class="chat-list"></div>
+        </aside>
 
-      <div id="messages" class="messages"></div>
+        <!-- Main Panel -->
+        <main class="main-panel">
+            <div id="empty-state" class="empty-state">
+                <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <p>Select a chat or create a new one to get started</p>
+            </div>
 
-      <form id="message-form" class="message-form">
-        <input
-          type="text"
-          id="question-input"
-          placeholder="Ask a question about this PDF..."
-          autocomplete="off"
-        />
-        <button type="submit">Send</button>
-      </form>
-    </main>
-  </div>
+            <div id="chat-view" class="chat-view" style="display: none;">
+                <div class="chat-header">
+                    <h2 id="chat-title"></h2>
+                    <div class="header-actions">
+                        <input type="file" id="file-input" accept=".pdf" style="display: none;">
+                        <button id="upload-btn" class="btn btn-success" title="Upload PDF to add documents to this chat">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="17 8 12 3 7 8"/>
+                                <line x1="12" y1="3" x2="12" y2="15"/>
+                            </svg>
+                            Upload PDF
+                        </button>
+                    </div>
+                </div>
 
-  <script src="js/main.js"></script>
+                <div id="messages-container" class="messages-container"></div>
+
+                <div class="message-composer">
+                    <div class="composer-settings">
+                        <label>
+                            Max chunks:
+                            <input type="number" id="max-chunks" value="5" min="1" max="20">
+                        </label>
+                    </div>
+                    <div class="composer-input">
+                        <input 
+                            type="text" 
+                            id="message-input" 
+                            placeholder="Ask something about your uploaded documents..."
+                            autocomplete="off"
+                        >
+                        <button id="send-btn" class="btn btn-primary">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13"/>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Container -->
+    <div id="modal-container"></div>
+
+    <script src="app.js"></script>
 </body>
 </html>

@@ -25,7 +25,7 @@ A small document-QA chat app that lets you upload PDFs and ask questions about t
 
 ---
 
-## ⚙️ Requirements
+## Requirements
 
 - Python 3.10+ (create a virtual environment recommended)
 - `pip install -r backend/requirements.txt`
@@ -59,7 +59,7 @@ Important env keys:
 
 ---
 
-## ▶️ Run locally
+## Run locally
 
 Backend
 
@@ -111,5 +111,6 @@ python -m http.server 5500
 - SQL DB is configured with `DATABASE_URL` (default commonly SQLite for development).
 
 ---
+
 
 

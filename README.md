@@ -1,10 +1,10 @@
-# Chatbot Generator 🤖
+# Chatbot Generator 
 
 A small document-QA chat app that lets you upload PDFs and ask questions about them. The backend is built with FastAPI and uses ChromaDB for vector storage and SentenceTransformers for embeddings. The frontend is a lightweight static HTML/JS app that talks to the backend API.
 
 ---
 
-## 🚀 Features
+##  Features
 
 - Upload PDFs and extract text
 - Chunking + embeddings for retrieval
@@ -33,7 +33,7 @@ A small document-QA chat app that lets you upload PDFs and ask questions about t
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 The backend reads settings from a `.env` file (Pydantic `BaseSettings`). Example `.env` (place at `backend/.env` or run the server from the `backend/` dir):
 
@@ -88,7 +88,7 @@ python -m http.server 5500
 
 ---
 
-## 🔌 API Reference (quick)
+## API Reference (quick)
 
 - POST `/chats`  — Create a chat
   - Body: `{ "title": "My chat" }`
@@ -104,11 +104,12 @@ python -m http.server 5500
 
 ---
 
-## 📁 Data storage details
+## Data storage details
 
 - Uploaded PDFs are stored under `UPLOAD_DIR` in subfolders `chat_{chat_id}` (e.g. `uploads/chat_1/doc_1.pdf`).
 - ChromaDB persistence is controlled by `CHROMA_PERSIST_DIR`.
 - SQL DB is configured with `DATABASE_URL` (default commonly SQLite for development).
 
 ---
+
 

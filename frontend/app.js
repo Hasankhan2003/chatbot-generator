@@ -1,575 +1,325 @@
-// Configuration
-const BASE_URL = 'http://127.0.0.1:8000';
+const API_BASE = "http://127.0.0.1:8000";
 
-// State
 let chats = [];
-let activeChat = null;
-let messages = [];
-let isLoading = false;
-let isUploadLoading = false;
+let currentChatId = null;
 
-// API Helper
-async function apiRequest(endpoint, options = {}) {
+const chatListEl = document.getElementById("chat-list");
+const newChatBtn = document.getElementById("new-chat-btn");
+const emptyNewChatBtn = document.getElementById("empty-new-chat-btn");
+const chatTitleEl = document.getElementById("chat-title");
+const renameChatBtn = document.getElementById("rename-chat-btn");
+const fileInput = document.getElementById("file-input");
+const documentsStatusEl = document.getElementById("documents-status");
+const messagesEl = document.getElementById("messages");
+const messageForm = document.getElementById("message-form");
+const messageInput = document.getElementById("message-input");
+const maxChunksInput = document.getElementById("max-chunks-input");
+const toastEl = document.getElementById("toast");
+const emptyStateEl = document.getElementById("empty-state");
+const chatContainerEl = document.getElementById("chat-container");
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 2500);
+}
+
+async function api(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
+  const headers = isFormData ? {} : { "Content-Type": "application/json" };
+
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: { ...headers, ...(options.headers || {}) },
+  });
+
+  if (!res.ok) {
+    let text;
     try {
-        const response = await fetch(`${BASE_URL}${endpoint}`, options);
-        // No Content
-        if (response.status === 204) return null;
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-            throw new Error(error.detail || `HTTP ${response.status}`);
-        }
-
-        // Some successful responses may have empty bodies - try to parse JSON safely
-        const text = await response.text();
-        if (!text) return null;
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            return null;
-        }
-    } catch (error) {
-        throw error;
+      text = await res.text();
+    } catch {
+      text = res.statusText;
     }
-} 
+    throw new Error(`Error ${res.status}: ${text}`);
+  }
 
-// Toast
-function showToast(message, type = 'success') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    
-    const icon = type === 'success' 
-        ? '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
-        : '<svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
-    
-    toast.innerHTML = `
-        ${icon}
-        <span class="toast-message">${message}</span>
-        <button class="toast-close">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-        </button>
-    `;
-    
-    container.appendChild(toast);
-    
-    const closeBtn = toast.querySelector('.toast-close');
-    closeBtn.addEventListener('click', () => toast.remove());
-    
-    setTimeout(() => toast.remove(), 4000);
+  const contentType = res.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return res.json();
+  }
+  return res.text();
 }
 
-// Modal
-function showModal(title, content, onConfirm) {
-    const container = document.getElementById('modal-container');
-    const modal = document.createElement('div');
-    modal.className = 'modal-overlay';
-    
-    modal.innerHTML = `
-        <div class="modal">
-            <h3 class="modal-title">${title}</h3>
-            <div class="modal-content">${content}</div>
-            <div class="modal-actions">
-                <button class="btn btn-secondary modal-cancel">Cancel</button>
-                <button class="btn btn-primary modal-confirm">Confirm</button>
-            </div>
-        </div>
-    `;
-    
-    container.appendChild(modal);
-    
-    const cancelBtn = modal.querySelector('.modal-cancel');
-    const confirmBtn = modal.querySelector('.modal-confirm');
-    
-    const close = () => modal.remove();
-    
-    cancelBtn.addEventListener('click', close);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) close();
-    });
-    
-    confirmBtn.addEventListener('click', () => {
-        onConfirm();
-        close();
-    });
-    
-    // Focus first input if exists
-    const input = modal.querySelector('input');
-    if (input) {
-        input.focus();
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                onConfirm();
-                close();
-            }
-        });
-    }
+/* UI state */
+
+function showEmptyState() {
+  currentChatId = null;
+  // Show empty state, hide chat container
+  emptyStateEl.style.display = "flex";
+  chatContainerEl.style.display = "none";
+  
+  // Clear any displayed data
+  messagesEl.innerHTML = "";
+  documentsStatusEl.textContent = "";
+  chatTitleEl.textContent = "Chat";
 }
 
-// Render chat list
-function renderChatList() {
-    const chatList = document.getElementById('chat-list');
-    chatList.innerHTML = '';
-    
-    chats.forEach(chat => {
-        const item = document.createElement('div');
-        item.className = `chat-item ${activeChat?.id === chat.id ? 'active' : ''}`;
-        item.dataset.chatId = chat.id;
-        
-        item.innerHTML = `
-            <span class="chat-item-title">${chat.title}</span>
-            <div class="chat-item-actions">
-                <button class="icon-btn edit-chat" title="Edit">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                </button>
-                <button class="icon-btn delete-chat" title="Delete">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                </button>
-            </div>
-        `;
-        
-        item.addEventListener('click', (e) => {
-            if (!e.target.closest('.icon-btn')) {
-                selectChat(chat);
-            }
-        });
-        
-        const editBtn = item.querySelector('.edit-chat');
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            startEditChat(chat, item);
-        });
-        
-        const deleteBtn = item.querySelector('.delete-chat');
-        deleteBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            confirmDeleteChat(chat);
-        });
-        
-        chatList.appendChild(item);
-    });
+function showChatContainer() {
+  // Hide empty state, show chat container
+  emptyStateEl.style.display = "none";
+  chatContainerEl.style.display = "flex";
 }
 
-// Start editing chat
-function startEditChat(chat, itemElement) {
-    const titleSpan = itemElement.querySelector('.chat-item-title');
-    const actionsDiv = itemElement.querySelector('.chat-item-actions');
-    
-    const editDiv = document.createElement('div');
-    editDiv.className = 'chat-item-edit';
-    editDiv.innerHTML = `
-        <input type="text" value="${chat.title}" class="edit-input">
-        <button class="btn btn-primary btn-sm save-edit">Save</button>
-        <button class="btn btn-secondary btn-sm cancel-edit">Cancel</button>
-    `;
-    
-    titleSpan.style.display = 'none';
-    actionsDiv.style.display = 'none';
-    itemElement.insertBefore(editDiv, actionsDiv);
-    
-    const input = editDiv.querySelector('.edit-input');
-    const saveBtn = editDiv.querySelector('.save-edit');
-    const cancelBtn = editDiv.querySelector('.cancel-edit');
-    
-    input.focus();
-    input.select();
-    
-    const save = async () => {
-        const newTitle = input.value.trim();
-        if (!newTitle) {
-            showToast('Title cannot be empty', 'error');
-            return;
-        }
-        
-        try {
-            const updated = await apiRequest(`/chats/${chat.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title: newTitle })
-            });
-            
-            chats = chats.map(c => c.id === chat.id ? updated : c);
-            if (activeChat?.id === chat.id) {
-                activeChat = updated;
-                updateChatTitle();
-            }
-            renderChatList();
-            showToast('Chat renamed successfully');
-        } catch (error) {
-            showToast('Failed to rename chat: ' + error.message, 'error');
-        }
-    };
-    
-    const cancel = () => {
-        editDiv.remove();
-        titleSpan.style.display = '';
-        actionsDiv.style.display = '';
-    };
-    
-    saveBtn.addEventListener('click', save);
-    cancelBtn.addEventListener('click', cancel);
-    input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') save();
-        if (e.key === 'Escape') cancel();
-    });
-}
+/* Chats */
 
-// Confirm delete chat
-function confirmDeleteChat(chat) {
-    showModal(
-        'Delete Chat',
-        '<p>Are you sure you want to delete this chat? This action cannot be undone.</p>',
-        () => deleteChat(chat.id)
-    );
-}
-
-// Delete chat
-async function deleteChat(chatId) {
-    try {
-        await apiRequest(`/chats/${chatId}`, { method: 'DELETE' });
-        chats = chats.filter(c => c.id !== chatId);
-        
-        if (activeChat?.id === chatId) {
-            activeChat = null;
-            messages = [];
-            updateView();
-        }
-        
-        renderChatList();
-        showToast('Chat deleted successfully');
-    } catch (error) {
-        showToast('Failed to delete chat: ' + error.message, 'error');
-    }
-}
-
-// Select chat
-async function selectChat(chat) {
-    activeChat = chat;
-    await loadMessages(chat.id);
-    updateView();
-    renderChatList();
-}
-
-// Load messages
-async function loadMessages(chatId) {
-    try {
-        messages = await apiRequest(`/chats/${chatId}/messages`);
-        renderMessages();
-    } catch (error) {
-        showToast('Failed to load messages: ' + error.message, 'error');
-    }
-}
-
-// Render messages
-function renderMessages() {
-    const container = document.getElementById('messages-container');
-    container.innerHTML = '';
-    
-    messages.forEach(msg => {
-        const msgDiv = document.createElement('div');
-        msgDiv.className = `message ${msg.role}${msg.loading ? ' loading' : ''}`;
-        
-        const bubble = document.createElement('div');
-        bubble.className = 'message-bubble';
-        
-        if (msg.loading) {
-            bubble.innerHTML = `
-                <svg class="spinner" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
-                    <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-                    <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
-                    <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
-                </svg>
-                Thinking...
-            `;
-        } else {
-            const content = document.createElement('div');
-            content.className = 'message-content';
-            content.textContent = msg.content;
-            bubble.appendChild(content);
-            
-            if (msg.sources && msg.sources.length > 0) {
-                const sources = document.createElement('div');
-                sources.className = 'message-sources';
-                sources.textContent = 'Sources: ' + msg.sources.map(s => 
-                    `Doc ${s.document_id} Chunk ${s.chunk_index}`
-                ).join(', ');
-                bubble.appendChild(sources);
-            }
-        }
-        
-        msgDiv.appendChild(bubble);
-        container.appendChild(msgDiv);
-    });
-    
-    scrollToBottom();
-}
-
-// Scroll to bottom
-function scrollToBottom() {
-    const container = document.getElementById('messages-container');
-    container.scrollTop = container.scrollHeight;
-}
-
-// Update view
-function updateView() {
-    const emptyState = document.getElementById('empty-state');
-    const chatView = document.getElementById('chat-view');
-    
-    if (activeChat) {
-        emptyState.style.display = 'none';
-        chatView.style.display = 'flex';
-        updateChatTitle();
-    } else {
-        emptyState.style.display = 'flex';
-        chatView.style.display = 'none';
-    }
-}
-
-// Update chat title
-function updateChatTitle() {
-    const titleEl = document.getElementById('chat-title');
-    if (activeChat) {
-        titleEl.textContent = activeChat.title;
-    }
-}
-
-// Load chats
 async function loadChats() {
-    try {
-        chats = await apiRequest('/chats');
-        renderChatList();
-    } catch (error) {
-        showToast('Failed to load chats: ' + error.message, 'error');
+  try {
+    chats = await api("/chats");
+    renderChatList();
+    // On initial load: do NOT auto-open latest chat; show empty state
+    showEmptyState();
+  } catch (e) {
+    console.error(e);
+    showToast("Failed to load chats");
+  }
+}
+
+function renderChatList() {
+  chatListEl.innerHTML = "";
+  chats.forEach((chat) => {
+    const li = document.createElement("li");
+    li.className = "chat-item" + (chat.id === currentChatId ? " active" : "");
+    li.dataset.id = chat.id;
+
+    const mainRow = document.createElement("div");
+    mainRow.className = "chat-item-main";
+
+    const titleSpan = document.createElement("span");
+    titleSpan.textContent = chat.title || `Chat ${chat.id}`;
+
+    mainRow.appendChild(titleSpan);
+
+    const actionsRow = document.createElement("div");
+    actionsRow.className = "chat-item-actions";
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "chat-action-btn rename";
+    renameBtn.title = "Rename";
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      renameChat(chat.id);
+    });
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "chat-action-btn delete";
+    deleteBtn.title = "Delete";
+    deleteBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      deleteChat(chat.id);
+    });
+
+    actionsRow.appendChild(renameBtn);
+    actionsRow.appendChild(deleteBtn);
+
+    li.appendChild(mainRow);
+    li.appendChild(actionsRow);
+
+    li.addEventListener("click", () => selectChat(chat.id));
+    chatListEl.appendChild(li);
+  });
+}
+
+async function createChat() {
+  try {
+    const body = { title: "New Chat" };
+    const chat = await api("/chats", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+    chats.unshift(chat);
+    renderChatList();
+    selectChat(chat.id); // When user explicitly creates a chat, open it
+  } catch (e) {
+    console.error(e);
+    showToast("Failed to create chat");
+  }
+}
+
+async function deleteChat(chatId) {
+  const chat = chats.find((c) => c.id === chatId);
+  if (!chat) return;
+  if (!confirm(`Delete "${chat.title || "this chat"}" and all its messages?`)) return;
+  try {
+    await api(`/chats/${chatId}`, { method: "DELETE" });
+    chats = chats.filter((c) => c.id !== chatId);
+    if (currentChatId === chatId) {
+      showEmptyState();
     }
+    renderChatList();
+  } catch (e) {
+    console.error(e);
+    showToast("Failed to delete chat");
+  }
 }
 
-// Create new chat
-function createNewChat() {
-    showModal(
-        'Create New Chat',
-        '<input type="text" placeholder="Enter chat title..." class="new-chat-input">',
-        async () => {
-            const input = document.querySelector('.new-chat-input');
-            const title = input.value.trim();
-            
-            if (!title) {
-                showToast('Please enter a chat title', 'error');
-                return;
-            }
-            
-            try {
-                const chat = await apiRequest('/chats', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title })
-                });
-                
-                chats.unshift(chat);
-                activeChat = chat;
-                messages = [];
-                updateView();
-                renderChatList();
-                showToast('Chat created successfully');
-            } catch (error) {
-                showToast('Failed to create chat: ' + error.message, 'error');
-            }
-        }
-    );
+async function renameChat(chatId) {
+  const chat = chats.find((c) => c.id === chatId);
+  if (!chat) return;
+  const newTitle = prompt("Enter new chat title:", chat.title || "");
+  if (newTitle === null) return;
+  try {
+    const body = { title: newTitle || null };
+    const updated = await api(`/chats/${chatId}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    const idx = chats.findIndex((c) => c.id === chatId);
+    if (idx !== -1) chats[idx] = updated;
+    renderChatList();
+    if (currentChatId === chatId) {
+      chatTitleEl.textContent = updated.title || `Chat ${updated.id}`;
+    }
+  } catch (e) {
+    console.error(e);
+    showToast("Failed to rename chat");
+  }
 }
 
-// Upload document
+async function selectChat(chatId) {
+  currentChatId = chatId;
+  const chat = chats.find((c) => c.id === chatId);
+  chatTitleEl.textContent = chat ? chat.title || `Chat ${chat.id}` : "Chat";
+
+  renderChatList();
+  showChatContainer();
+  await loadMessages(chatId);
+}
+
+/* Documents */
+
 async function uploadDocument(file) {
-    if (!activeChat) {
-        showToast('Please select a chat first', 'error');
-        return;
-    }
-    
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-        showToast('Please upload a PDF file', 'error');
-        return;
-    }
-    
-    isUploadLoading = true;
-    updateUploadButton();
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    
-    try {
-        const result = await apiRequest(`/chats/${activeChat.id}/documents`, {
-            method: 'POST',
-            body: formData
-        });
-        
-        showToast(`Document uploaded: ${result.filename} (${result.num_chunks} chunks)`);
-    } catch (error) {
-        showToast('Failed to upload document: ' + error.message, 'error');
-    } finally {
-        isUploadLoading = false;
-        updateUploadButton();
-        document.getElementById('file-input').value = '';
-    }
-}
+  if (!currentChatId) {
+    showToast("Create or select a chat first");
+    return;
+  }
+  const formData = new FormData();
+  formData.append("file", file);
 
-// Update upload button
-function updateUploadButton() {
-    const btn = document.getElementById('upload-btn');
-    btn.disabled = isUploadLoading;
-    
-    if (isUploadLoading) {
-        btn.innerHTML = `
-            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-                <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
-                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
-            </svg>
-            Uploading...
-        `;
-    } else {
-        btn.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
-            Upload PDF
-        `;
-    }
-}
-
-// Send message
-async function sendMessage() {
-    const input = document.getElementById('message-input');
-    const maxChunksInput = document.getElementById('max-chunks');
-    const message = input.value.trim();
-    
-    if (!message || !activeChat || isLoading) return;
-    
-    const maxChunks = parseInt(maxChunksInput.value) || 5;
-    
-    input.value = '';
-    isLoading = true;
-    updateSendButton();
-    
-    // Add user message
-    const userMsg = {
-        id: Date.now(),
-        role: 'user',
-        content: message,
-        created_at: new Date().toISOString()
-    };
-    messages.push(userMsg);
-    
-    // Add loading indicator
-    const loadingMsg = {
-        id: 'loading',
-        role: 'assistant',
-        content: '',
-        loading: true
-    };
-    messages.push(loadingMsg);
-    renderMessages();
-    
-    try {
-        const result = await apiRequest(`/chats/${activeChat.id}/ask`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: message,
-                max_chunks: maxChunks
-            })
-        });
-        
-        // Remove loading, add actual response
-        messages = messages.filter(m => m.id !== 'loading');
-        
-        const assistantMsg = {
-            id: result.message_id,
-            role: 'assistant',
-            content: result.answer,
-            sources: result.sources,
-            created_at: new Date().toISOString()
-        };
-        messages.push(assistantMsg);
-        renderMessages();
-    } catch (error) {
-        messages = messages.filter(m => m.id !== 'loading');
-        renderMessages();
-        showToast('Failed to send message: ' + error.message, 'error');
-    } finally {
-        isLoading = false;
-        updateSendButton();
-        input.focus();
-    }
-}
-
-// Update send button
-function updateSendButton() {
-    const btn = document.getElementById('send-btn');
-    const input = document.getElementById('message-input');
-    
-    btn.disabled = isLoading || !input.value.trim();
-    
-    if (isLoading) {
-        btn.innerHTML = `
-            <svg class="spinner" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/>
-                <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>
-                <line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/>
-                <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/>
-            </svg>
-        `;
-    } else {
-        btn.innerHTML = `
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-            </svg>
-        `;
-    }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    // Load chats on startup
-    loadChats();
-    
-    // New chat button
-    document.getElementById('new-chat-btn').addEventListener('click', createNewChat);
-    
-    // Upload button
-    document.getElementById('upload-btn').addEventListener('click', () => {
-        document.getElementById('file-input').click();
+  documentsStatusEl.textContent = "Uploading and processing PDF...";
+  try {
+    const doc = await api(`/chats/${currentChatId}/documents`, {
+      method: "POST",
+      body: formData,
     });
-    
-    // File input
-    document.getElementById('file-input').addEventListener('change', (e) => {
-        if (e.target.files[0]) {
-            uploadDocument(e.target.files[0]);
-        }
+
+    documentsStatusEl.textContent = `Document "${doc.filename}" processed (${doc.num_chunks} chunks).`;
+  } catch (e) {
+    console.error(e);
+    documentsStatusEl.textContent = "";
+    showToast("Failed to upload document");
+  }
+}
+
+/* Messages */
+
+async function loadMessages(chatId) {
+  messagesEl.innerHTML = "";
+  if (!chatId) return;
+  try {
+    const msgs = await api(`/chats/${chatId}/messages`);
+    msgs.forEach((m) => addMessageToUI(m.role, m.content));
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  } catch (e) {
+    console.error(e);
+    showToast("Failed to load messages");
+  }
+}
+
+function addMessageToUI(role, content, metaText = "") {
+  const div = document.createElement("div");
+  div.className = `message ${role}`;
+  const text = document.createElement("div");
+  text.textContent = content;
+  div.appendChild(text);
+
+  if (metaText) {
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = metaText;
+    div.appendChild(meta);
+  }
+
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+async function sendMessage(e) {
+  e.preventDefault();
+  if (!currentChatId) {
+    showToast("Select or create a chat first");
+    return;
+  }
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  const maxChunks = parseInt(maxChunksInput.value || "5", 10);
+
+  addMessageToUI("user", text);
+  messageInput.value = "";
+  messageInput.focus();
+
+  addMessageToUI("assistant", "Thinking...");
+  const thinkingNode = messagesEl.lastChild;
+
+  try {
+    const body = { message: text, max_chunks: maxChunks };
+    const res = await api(`/chats/${currentChatId}/ask`, {
+      method: "POST",
+      body: JSON.stringify(body),
     });
-    
-    // Send button
-    document.getElementById('send-btn').addEventListener('click', sendMessage);
-    
-    // Message input - enter to send
-    const messageInput = document.getElementById('message-input');
-    messageInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
-    });
-    
-    // Update send button state on input
-    messageInput.addEventListener('input', updateSendButton);
+
+    // Replace "Thinking..." with actual answer
+    thinkingNode.firstChild.textContent = res.answer;
+
+    if (Array.isArray(res.sources) && res.sources.length > 0) {
+      const firstSource = res.sources[0];
+      const srcText = firstSource.source
+        ? `Source: ${firstSource.source} (chunk ${firstSource.chunk_index})`
+        : "";
+      if (srcText) {
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = srcText;
+        thinkingNode.appendChild(meta);
+      }
+    }
+  } catch (e) {
+    console.error(e);
+    thinkingNode.firstChild.textContent = "Error: failed to get answer.";
+    showToast("Failed to send message");
+  }
+}
+
+/* Event listeners */
+
+newChatBtn.addEventListener("click", createChat);
+emptyNewChatBtn.addEventListener("click", createChat);
+renameChatBtn.addEventListener("click", () => {
+  if (currentChatId) renameChat(currentChatId);
 });
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    uploadDocument(file);
+    fileInput.value = "";
+  }
+});
+
+messageForm.addEventListener("submit", sendMessage);
+
+/* Init */
+
+loadChats();

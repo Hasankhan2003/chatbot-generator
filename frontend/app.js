@@ -3,20 +3,22 @@ const API_BASE = "http://127.0.0.1:8000";
 let chats = [];
 let currentChatId = null;
 
-const chatListEl = document.getElementById("chat-list");
-const newChatBtn = document.getElementById("new-chat-btn");
-const emptyNewChatBtn = document.getElementById("empty-new-chat-btn");
-const chatTitleEl = document.getElementById("chat-title");
-const renameChatBtn = document.getElementById("rename-chat-btn");
-const fileInput = document.getElementById("file-input");
+const chatListEl        = document.getElementById("chat-list");
+const newChatBtn        = document.getElementById("new-chat-btn");
+const emptyNewChatBtn   = document.getElementById("empty-new-chat-btn");
+const chatTitleEl       = document.getElementById("chat-title");
+const renameChatBtn     = document.getElementById("rename-chat-btn");
+const fileInput         = document.getElementById("file-input");
 const documentsStatusEl = document.getElementById("documents-status");
-const messagesEl = document.getElementById("messages");
-const messageForm = document.getElementById("message-form");
-const messageInput = document.getElementById("message-input");
-const maxChunksInput = document.getElementById("max-chunks-input");
-const toastEl = document.getElementById("toast");
-const emptyStateEl = document.getElementById("empty-state");
-const chatContainerEl = document.getElementById("chat-container");
+const messagesEl        = document.getElementById("messages");
+const messageInput      = document.getElementById("message-input");
+const maxChunksInput    = document.getElementById("max-chunks-input");
+const toastEl           = document.getElementById("toast");
+const emptyStateEl      = document.getElementById("empty-state");
+const chatContainerEl   = document.getElementById("chat-container");
+const sendButton        = document.getElementById("send-btn");
+
+/* ── Utilities ─────────────────────────────────────────────────────────── */
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -26,7 +28,7 @@ function showToast(msg) {
 
 async function api(path, options = {}) {
   const isFormData = options.body instanceof FormData;
-  const headers = isFormData ? {} : { "Content-Type": "application/json" };
+  const headers    = isFormData ? {} : { "Content-Type": "application/json" };
 
   const res = await fetch(`${API_BASE}${path}`, {
     ...options,
@@ -35,48 +37,37 @@ async function api(path, options = {}) {
 
   if (!res.ok) {
     let text;
-    try {
-      text = await res.text();
-    } catch {
-      text = res.statusText;
-    }
+    try   { text = await res.text(); }
+    catch { text = res.statusText;   }
     throw new Error(`Error ${res.status}: ${text}`);
   }
 
   const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return res.json();
-  }
-  return res.text();
+  return contentType.includes("application/json") ? res.json() : res.text();
 }
 
-/* UI state */
+/* ── UI state ───────────────────────────────────────────────────────────── */
 
 function showEmptyState() {
   currentChatId = null;
-  // Show empty state, hide chat container
-  emptyStateEl.style.display = "flex";
+  emptyStateEl.style.display    = "flex";
   chatContainerEl.style.display = "none";
-  
-  // Clear any displayed data
-  messagesEl.innerHTML = "";
+  messagesEl.innerHTML          = "";
   documentsStatusEl.textContent = "";
-  chatTitleEl.textContent = "Chat";
+  chatTitleEl.textContent       = "Chat";
 }
 
 function showChatContainer() {
-  // Hide empty state, show chat container
-  emptyStateEl.style.display = "none";
+  emptyStateEl.style.display    = "none";
   chatContainerEl.style.display = "flex";
 }
 
-/* Chats */
+/* ── Chats ──────────────────────────────────────────────────────────────── */
 
 async function loadChats() {
   try {
     chats = await api("/chats");
     renderChatList();
-    // On initial load: do NOT auto-open latest chat; show empty state
     showEmptyState();
   } catch (e) {
     console.error(e);
@@ -88,33 +79,32 @@ function renderChatList() {
   chatListEl.innerHTML = "";
   chats.forEach((chat) => {
     const li = document.createElement("li");
-    li.className = "chat-item" + (chat.id === currentChatId ? " active" : "");
+    li.className  = "chat-item" + (chat.id === currentChatId ? " active" : "");
     li.dataset.id = chat.id;
 
-    const mainRow = document.createElement("div");
+    const mainRow   = document.createElement("div");
     mainRow.className = "chat-item-main";
 
     const titleSpan = document.createElement("span");
     titleSpan.textContent = chat.title || `Chat ${chat.id}`;
-
     mainRow.appendChild(titleSpan);
 
     const actionsRow = document.createElement("div");
     actionsRow.className = "chat-item-actions";
 
-    const renameBtn = document.createElement("button");
-    renameBtn.type = "button";
+    const renameBtn  = document.createElement("button");
+    renameBtn.type   = "button";
     renameBtn.className = "chat-action-btn rename";
-    renameBtn.title = "Rename";
+    renameBtn.title  = "Rename";
     renameBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       renameChat(chat.id);
     });
 
-    const deleteBtn = document.createElement("button");
-    deleteBtn.type = "button";
+    const deleteBtn  = document.createElement("button");
+    deleteBtn.type   = "button";
     deleteBtn.className = "chat-action-btn delete";
-    deleteBtn.title = "Delete";
+    deleteBtn.title  = "Delete";
     deleteBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       deleteChat(chat.id);
@@ -122,10 +112,8 @@ function renderChatList() {
 
     actionsRow.appendChild(renameBtn);
     actionsRow.appendChild(deleteBtn);
-
     li.appendChild(mainRow);
     li.appendChild(actionsRow);
-
     li.addEventListener("click", () => selectChat(chat.id));
     chatListEl.appendChild(li);
   });
@@ -133,14 +121,13 @@ function renderChatList() {
 
 async function createChat() {
   try {
-    const body = { title: "New Chat" };
     const chat = await api("/chats", {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({ title: "New Chat" }),
     });
     chats.unshift(chat);
     renderChatList();
-    selectChat(chat.id); // When user explicitly creates a chat, open it
+    selectChat(chat.id);
   } catch (e) {
     console.error(e);
     showToast("Failed to create chat");
@@ -154,9 +141,7 @@ async function deleteChat(chatId) {
   try {
     await api(`/chats/${chatId}`, { method: "DELETE" });
     chats = chats.filter((c) => c.id !== chatId);
-    if (currentChatId === chatId) {
-      showEmptyState();
-    }
+    if (currentChatId === chatId) showEmptyState();
     renderChatList();
   } catch (e) {
     console.error(e);
@@ -170,17 +155,15 @@ async function renameChat(chatId) {
   const newTitle = prompt("Enter new chat title:", chat.title || "");
   if (newTitle === null) return;
   try {
-    const body = { title: newTitle || null };
     const updated = await api(`/chats/${chatId}`, {
       method: "PUT",
-      body: JSON.stringify(body),
+      body: JSON.stringify({ title: newTitle || null }),
     });
     const idx = chats.findIndex((c) => c.id === chatId);
     if (idx !== -1) chats[idx] = updated;
     renderChatList();
-    if (currentChatId === chatId) {
+    if (currentChatId === chatId)
       chatTitleEl.textContent = updated.title || `Chat ${updated.id}`;
-    }
   } catch (e) {
     console.error(e);
     showToast("Failed to rename chat");
@@ -189,15 +172,14 @@ async function renameChat(chatId) {
 
 async function selectChat(chatId) {
   currentChatId = chatId;
-  const chat = chats.find((c) => c.id === chatId);
+  const chat    = chats.find((c) => c.id === chatId);
   chatTitleEl.textContent = chat ? chat.title || `Chat ${chat.id}` : "Chat";
-
   renderChatList();
   showChatContainer();
   await loadMessages(chatId);
 }
 
-/* Documents */
+/* ── Documents ──────────────────────────────────────────────────────────── */
 
 async function uploadDocument(file) {
   if (!currentChatId) {
@@ -206,15 +188,14 @@ async function uploadDocument(file) {
   }
   const formData = new FormData();
   formData.append("file", file);
-
   documentsStatusEl.textContent = "Uploading and processing PDF...";
   try {
     const doc = await api(`/chats/${currentChatId}/documents`, {
       method: "POST",
       body: formData,
     });
-
-    documentsStatusEl.textContent = `Document "${doc.filename}" processed (${doc.num_chunks} chunks).`;
+    documentsStatusEl.textContent =
+      `Document "${doc.filename}" processed (${doc.num_chunks} chunks).`;
   } catch (e) {
     console.error(e);
     documentsStatusEl.textContent = "";
@@ -222,7 +203,7 @@ async function uploadDocument(file) {
   }
 }
 
-/* Messages */
+/* ── Messages ───────────────────────────────────────────────────────────── */
 
 async function loadMessages(chatId) {
   messagesEl.innerHTML = "";
@@ -238,15 +219,16 @@ async function loadMessages(chatId) {
 }
 
 function addMessageToUI(role, content, metaText = "") {
-  const div = document.createElement("div");
+  const div  = document.createElement("div");
   div.className = `message ${role}`;
+
   const text = document.createElement("div");
   text.textContent = content;
   div.appendChild(text);
 
   if (metaText) {
     const meta = document.createElement("div");
-    meta.className = "meta";
+    meta.className   = "meta";
     meta.textContent = metaText;
     div.appendChild(meta);
   }
@@ -255,12 +237,12 @@ function addMessageToUI(role, content, metaText = "") {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-async function sendMessage(e) {
-  e.preventDefault();
+async function sendMessage() {
   if (!currentChatId) {
     showToast("Select or create a chat first");
     return;
   }
+
   const text = messageInput.value.trim();
   if (!text) return;
 
@@ -274,13 +256,11 @@ async function sendMessage(e) {
   const thinkingNode = messagesEl.lastChild;
 
   try {
-    const body = { message: text, max_chunks: maxChunks };
     const res = await api(`/chats/${currentChatId}/ask`, {
       method: "POST",
-      body: JSON.stringify(body),
+      body: JSON.stringify({ message: text, max_chunks: maxChunks }),
     });
 
-    // Replace "Thinking..." with actual answer
     thinkingNode.firstChild.textContent = res.answer;
 
     if (Array.isArray(res.sources) && res.sources.length > 0) {
@@ -290,7 +270,7 @@ async function sendMessage(e) {
         : "";
       if (srcText) {
         const meta = document.createElement("div");
-        meta.className = "meta";
+        meta.className   = "meta";
         meta.textContent = srcText;
         thinkingNode.appendChild(meta);
       }
@@ -302,10 +282,11 @@ async function sendMessage(e) {
   }
 }
 
-/* Event listeners */
+/* ── Event listeners ────────────────────────────────────────────────────── */
 
 newChatBtn.addEventListener("click", createChat);
 emptyNewChatBtn.addEventListener("click", createChat);
+
 renameChatBtn.addEventListener("click", () => {
   if (currentChatId) renameChat(currentChatId);
 });
@@ -318,8 +299,17 @@ fileInput.addEventListener("change", (e) => {
   }
 });
 
-messageForm.addEventListener("submit", sendMessage);
+// Send button — type="button" + no wrapping form = zero chance of page refresh
+sendButton.addEventListener("click", sendMessage);
 
-/* Init */
+// Enter sends; Shift+Enter inserts a newline
+messageInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+/* ── Init ───────────────────────────────────────────────────────────────── */
 
 loadChats();

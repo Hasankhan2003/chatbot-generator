@@ -53,7 +53,8 @@
 
           <div id="messages" class="messages"></div>
 
-          <form id="message-form" class="message-form">
+          <!-- No <form> tag: plain div eliminates any risk of page refresh -->
+          <div class="message-form">
             <textarea
               id="message-input"
               placeholder="Ask a question about your document..."
@@ -67,8 +68,8 @@
               value="5"
               title="Max chunks"
             />
-            <button type="submit" class="primary">Send</button>
-          </form>
+            <button type="button" id="send-btn" class="primary">Send</button>
+          </div>
         </div>
       </section>
     </main>

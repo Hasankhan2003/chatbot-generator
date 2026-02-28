@@ -1,4 +1,4 @@
-# Chatbot Generator 
+# DocuQuery
 
 A small document-QA chat app that lets you upload PDFs and ask questions about them. The backend is built with FastAPI and uses ChromaDB for vector storage and SentenceTransformers for embeddings. The frontend is a lightweight static HTML/JS app that talks to the backend API.
 

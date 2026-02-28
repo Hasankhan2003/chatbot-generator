@@ -75,13 +75,20 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
 Frontend
 
-- You can open `frontend/index.html` directly in the browser, or serve it via a static server (recommended so CORS origin matches allowed origins):
+Run the static frontend by starting a simple HTTP server and visiting the URL:
 
 ```bash
 cd frontend
-# Quick server
-python -m http.server 5500
-# then open http://127.0.0.1:5500
+python -m http.server 5500 --bind 127.0.0.1
+# then open http://127.0.0.1:5500/index.html
+
+# Start the backend server separately:
+# (run this in the backend/ directory)
+# python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+
+```# Quick server
+python -m http.server 5500 --bind 127.0.0.1
+# then open http://127.0.0.1:5500/index.html
 ```
 
 > The backend CORS allows `http://127.0.0.1:5500` and `http://localhost:5500` by default.

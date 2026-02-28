@@ -1,10 +1,15 @@
 # Virtual environment
 venv/
+backend/.venv/
 .env
 
 # Python cache
 __pycache__/
 *.pyc
+# Ignore build and distribution directories
+build/
+dist/
+*.egg-info/
 
 # Jupyter
 .ipynb_checkpoints/
